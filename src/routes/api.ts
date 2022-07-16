@@ -4,14 +4,13 @@ import BlockEstimator from '../BlockEstimator';
 import formatTime from '../utils/TimeHandler';
 import { syncEventTopics, syncEventInputs } from '../constants';
 import executeAsync from '../utils/AsyncBatch';
-import factoryAbi from '../chain/contracts/abi/Factory.json';
-import contractAddress from '../chain/contracts/address.json';
+
+import contracts from '../chain/contracts';
 
 const { WEBSOCKET_PROVIDER } = process.env;
-const { factory: factoryAddress } = contractAddress;
 
 const web3: Web3 = new Web3(new Web3.providers.WebsocketProvider(WEBSOCKET_PROVIDER!));
-const factoryContract = new web3.eth.Contract(factoryAbi as any, factoryAddress);
+const factoryContract = new web3.eth.Contract(contracts.abi.factory as any, contracts.address.factory);
 
 const blockEstimator = new BlockEstimator({ web3 });
 
@@ -105,7 +104,39 @@ router.get("/pair", async (req: Request, res: Response) => {
 
 router.get("/pair/:address", async (req: Request, res: Response) => {
 
-    res.json({});
+    var { address } = req.params;
+
+    var pairContract = new web3.eth.Contract(contracts.abi.pair as any, address);
+
+    var batch: any = new web3.BatchRequest();
+
+    var requests = [
+        pairContract.methods.name().call.request(),
+        pairContract.methods.symbol().call.request(),
+        pairContract.methods.factory().call.request(),
+        pairContract.methods.token0().call.request(),
+        pairContract.methods.token1().call.request(),
+        pairContract.methods.getReserves().call.request(),
+    ]
+
+    for (var request of requests) {
+        batch.add(request);
+    }
+
+    var [
+        name,
+        symbol,
+        factory,
+        token0,
+        token1,
+        {
+            reserve0,
+            reserve1,
+            blockTimestampLast
+        }
+    ]: any = await executeAsync(batch);
+
+    res.json({ name, symbol, factory, token0, token1, reserves: { reserve0, reserve1, blockTimestampLast } });
 });
 
 export default router;
