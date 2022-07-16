@@ -19,6 +19,7 @@ const periode = 24;
 
 const router: Router = express.Router();
 
+
 router.get("/reserves", async (req: Request, res: Response) => {
 
     const { pair } = req.query;
@@ -170,6 +171,7 @@ router.get("/token/:address", async (req: Request, res: Response) => {
     ]: any = await executeAsync(batch);
 
     res.json({ name, symbol, decimals, totalSupply });
+
 });
 
 export default router;
