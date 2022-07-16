@@ -1,6 +1,9 @@
 import express, { Router, Request, Response } from 'express';
 import Web3 from 'web3';
 import BlockEstimator from '../BlockEstimator';
+import formatTime from '../utils/TimeHandler';
+import { syncEventTopics, syncEventInputs } from '../constants';
+import executeAsync from '../utils/AsyncBatch';
 
 const { WEBSOCKET_PROVIDER } = process.env;
 
@@ -10,21 +13,74 @@ const blockEstimator = new BlockEstimator({ web3 });
 
 const router: Router = express.Router();
 
-router.get("/", async (req: Request, res: Response) => {
+const timeframe = 1 * 60 * 60;
+const periode = 24;
 
-    var averageBlockTime = await blockEstimator.getAverageBlockTime();
+router.get("/reserves", async (req: Request, res: Response) => {
 
-    console.log(averageBlockTime);
+    const { pair } = req.query;
 
-    var blockAtTimestamp = blockEstimator.getBlockAtTimestamp(1657800414);
+    var [averageBlockTime, block] = await Promise.all([blockEstimator.getAverageBlockTime(), web3.eth.getBlock("latest")]);
 
-    console.log(blockAtTimestamp);
+    var blockTimestamp = Number(block.timestamp);
 
-    var timestampAtBlock = blockEstimator.getTimestampAtBlock(blockAtTimestamp);
+    var blocks = [];
 
-    console.log(timestampAtBlock);
+    var batch: any = new web3.BatchRequest();
 
-    res.json({ block: "ok" });
+    var getPastLogs: any = web3.eth.getPastLogs;
+
+    for (var i = 0; i < periode; i++) {
+
+        var date = new Date(formatTime(blockTimestamp - (i * timeframe), 3));
+
+        var timestamp = Math.round(date.getTime() / 1000);
+
+        var number = blockEstimator.getBlockAtTimestamp(i == 0 ? blockTimestamp : timestamp)
+
+        blocks.push({ timestamp, number });
+
+        var blocksTail = i == periode ? 200 : 50;
+
+        var fromBlock = number - blocksTail;
+        var toBlock = number;
+
+        batch.add(
+            getPastLogs.request({
+                address: pair,
+                topics: syncEventTopics,
+                fromBlock,
+                toBlock
+            })
+        );
+
+    };
+
+    var pastLogs: any = await executeAsync(batch);
+
+    var reservesHistory = [];
+
+    reservesHistory = blocks.map((block, index) => {
+
+        var logs = pastLogs.slice(index).find((logs: any) => logs.length > 0);
+
+        var lastLog = logs[logs.length - 1];
+
+        var { reserve0, reserve1 } = web3.eth.abi.decodeLog(syncEventInputs, lastLog.data, syncEventTopics)
+
+        return {
+            timestamp: block.timestamp,
+            reserve0,
+            reserve1
+        }
+
+    })
+
+    res.json({ history: reservesHistory.reverse() });
+});
+
+router.get("/pair/:address", async (req: Request, res: Response) => {
+    res.json({});
 });
 
 export default router;
