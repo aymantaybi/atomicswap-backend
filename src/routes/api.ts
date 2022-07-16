@@ -116,6 +116,8 @@ router.get("/pair/:address", async (req: Request, res: Response) => {
         pairContract.methods.factory().call.request(),
         pairContract.methods.token0().call.request(),
         pairContract.methods.token1().call.request(),
+        pairContract.methods.decimals().call.request(),
+        pairContract.methods.totalSupply().call.request(),
         pairContract.methods.getReserves().call.request(),
     ]
 
@@ -129,6 +131,8 @@ router.get("/pair/:address", async (req: Request, res: Response) => {
         factory,
         token0,
         token1,
+        decimals,
+        totalSupply,
         {
             reserve0,
             reserve1,
@@ -136,7 +140,36 @@ router.get("/pair/:address", async (req: Request, res: Response) => {
         }
     ]: any = await executeAsync(batch);
 
-    res.json({ name, symbol, factory, token0, token1, reserves: { reserve0, reserve1, blockTimestampLast } });
+    res.json({ name, symbol, factory, token0, token1, decimals, totalSupply, reserves: { reserve0, reserve1, blockTimestampLast } });
+});
+
+router.get("/token/:address", async (req: Request, res: Response) => {
+
+    var { address } = req.params;
+
+    var erc20Contract = new web3.eth.Contract(contracts.abi.erc20 as any, address);
+
+    var batch: any = new web3.BatchRequest();
+
+    var requests = [
+        erc20Contract.methods.name().call.request(),
+        erc20Contract.methods.symbol().call.request(),
+        erc20Contract.methods.decimals().call.request(),
+        erc20Contract.methods.totalSupply().call.request()
+    ]
+
+    for (var request of requests) {
+        batch.add(request);
+    }
+
+    var [
+        name,
+        symbol,
+        decimals,
+        totalSupply
+    ]: any = await executeAsync(batch);
+
+    res.json({ name, symbol, decimals, totalSupply });
 });
 
 export default router;
