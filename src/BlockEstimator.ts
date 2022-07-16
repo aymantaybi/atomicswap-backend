@@ -1,5 +1,5 @@
 import Web3 from "web3";
-import executeAsync from '@/utils/AsyncBatch';
+import executeAsync from './utils/AsyncBatch';
 
 interface BlockEstimatorConstructor {
     web3: Web3

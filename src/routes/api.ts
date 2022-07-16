@@ -1,25 +1,24 @@
 import express, { Router, Request, Response } from 'express';
 import Web3 from 'web3';
-import BlockEstimator from '@/BlockEstimator';
-import formatTime from '@/utils/TimeHandler';
-import { syncEventTopics, syncEventInputs } from '@/constants';
-import executeAsync from '@/utils/AsyncBatch';
-import factoryAbi from '@/chain/contracts/abi/Factory.json';
-import contractAddress from '@/chain/contracts/address.json';
+import BlockEstimator from '../BlockEstimator';
+import formatTime from '../utils/TimeHandler';
+import { syncEventTopics, syncEventInputs } from '../constants';
+import executeAsync from '../utils/AsyncBatch';
+import factoryAbi from '../chain/contracts/abi/Factory.json';
+import contractAddress from '../chain/contracts/address.json';
 
 const { WEBSOCKET_PROVIDER } = process.env;
 const { factory: factoryAddress } = contractAddress;
 
 const web3: Web3 = new Web3(new Web3.providers.WebsocketProvider(WEBSOCKET_PROVIDER!));
-
-const factoryContract = new web3.eth.Contract(factoryAbi, factoryAddress);
-
-const router: Router = express.Router();
+const factoryContract = new web3.eth.Contract(factoryAbi as any, factoryAddress);
 
 const blockEstimator = new BlockEstimator({ web3 });
 
 const timeframe = 1 * 60 * 60;
 const periode = 24;
+
+const router: Router = express.Router();
 
 router.get("/reserves", async (req: Request, res: Response) => {
 
@@ -86,12 +85,26 @@ router.get("/pair", async (req: Request, res: Response) => {
 
     const { tokens } = req.query;
 
-    if (!Array.isArray(tokens) || (Array.isArray(tokens) && tokens.length != 2)) return res.status(401).json({ error: "Unsupported 'tokens' query" });
+    var tokensAddress: string[] = typeof tokens === 'string' ? tokens.split(",") : [];
 
-    res.json({});
+    if (tokensAddress.length != 2) return res.status(400).json({ error: "Unsupported 'tokens' query" });
+
+    try {
+
+        var address = await factoryContract.methods.getPair(...tokensAddress).call();
+
+        res.json({ address });
+
+    } catch {
+
+        res.sendStatus(500);
+
+    }
+
 });
 
 router.get("/pair/:address", async (req: Request, res: Response) => {
+
     res.json({});
 });
 
