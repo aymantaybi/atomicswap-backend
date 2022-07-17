@@ -1,9 +1,5 @@
 import { Response } from 'express';
 
-const writeEvent = (res: Response, data: any) => {
-    res.write(`data: ${JSON.stringify(data)}\n\n`);
-};
-
 const sendEvent = (res: Response, data: any) => {
 
     if (!res.headersSent) {
@@ -16,7 +12,7 @@ const sendEvent = (res: Response, data: any) => {
 
     }
 
-    writeEvent(res, data);
+    res.write(`data: ${JSON.stringify(data)}\n\n`);
 };
 
-export { sendEvent, writeEvent };
+export { sendEvent };
