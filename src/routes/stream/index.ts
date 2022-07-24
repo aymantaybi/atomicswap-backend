@@ -1,9 +1,10 @@
 import express, { Router, Request, Response } from 'express';
 import Web3 from 'web3';
-import { sendEvent } from './ServerSentEvents';
-
-import contracts from '../../chain/contracts';
 import { EventEmitter } from 'events';
+
+import { sendEvent } from './ServerSentEvents';
+import contracts from '../../chain/contracts';
+import formatTime from '../../utils/TimeHandler';
 
 const { WEBSOCKET_PROVIDER } = process.env;
 
@@ -38,6 +39,7 @@ router.get("/reserves", (req: Request, res: Response) => {
 
     if (!subscription) {
 
+
         subscription = {
             event: 'sync',
             address: pair as string,
@@ -48,10 +50,12 @@ router.get("/reserves", (req: Request, res: Response) => {
 
             var { reserve0, reserve1 } = event.returnValues;
 
-            var timestamp = Math.round(Date.now() / 1000);
+            var date = new Date(formatTime(Date.now(), 3));
+
+            var timestamp = Math.round(date.getTime() / 1000) + 3600;
 
             for (var subscriber of subscribers) {
-                sendEvent(subscriber.response, { reserve0, reserve1, timestamp });
+                sendEvent(subscriber.response, { pair, timestamp, reserve0, reserve1 });
             }
 
         });
