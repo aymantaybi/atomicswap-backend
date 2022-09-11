@@ -29,8 +29,8 @@ var options = {
     // Enable auto reconnection
     reconnect: {
         auto: true,
-        delay: 5000, // ms
-        maxAttempts: 5,
+        delay: 0, // ms
+        maxAttempts: 10,
         onTimeout: false
     }
 };
